@@ -2,6 +2,7 @@ package com.example.numkeyboard;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.graphics.Color;
 import android.os.Bundle;
 import android.widget.EditText;
 
@@ -18,6 +19,7 @@ public class MainActivity extends AppCompatActivity {
         EditText editText = findViewById(R.id.editText);
         Numpad numpad = findViewById(R.id.numberKeyboardView);
         numpad.setTargetEditText(editText);
+        numpad.setButtonColor(Color.BLACK,Color.WHITE);
 
 
     }
