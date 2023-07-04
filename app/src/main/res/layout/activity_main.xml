@@ -6,14 +6,23 @@
     <EditText
         android:id="@+id/editText"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:background="@android:color/transparent"
+        android:hint="Enter text"
+        android:textColor="@android:color/black"
+        android:textSize="16sp" />
+
     <EditText
         android:id="@+id/editText1"
         android:layout_below="@id/editText"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
-
-
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:background="@android:color/transparent"
+        android:hint="Enter text"
+        android:textColor="@android:color/black"
+        android:textSize="16sp" />
     <com.example.numpad.Numpad
         android:id="@+id/numberKeyboardView"
         android:layout_width="match_parent"
