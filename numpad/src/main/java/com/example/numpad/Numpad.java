@@ -22,6 +22,7 @@ import com.example.numpad.NumpadListener;
 public class Numpad extends GridLayout implements View.OnClickListener {
 
     private EditText targetEditText;
+    private EditText additionalEditText;
     private NumpadListener numpadListener;
     private InputMethodManager inputMethodManager;
     private GestureDetector gestureDetector;
@@ -90,13 +91,34 @@ public class Numpad extends GridLayout implements View.OnClickListener {
         });
     }
 
+    public void setAdditionalEditText(EditText editText1) {
+        additionalEditText = editText1;
+        additionalEditText.setInputType(InputType.TYPE_NULL);
+        editText1.setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_UP) {
+                setVisibility(View.VISIBLE);
+                Log.d("Numpad", "Numpad setAdditionalEditText - MotionEvent.ACTION_UP");
+                return true;
+            }
+            return false;
+        });
+
+        View rootView = editText1.getRootView();
+        rootView.setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                setVisibility(View.GONE);
+            }
+            return false;
+        });
+    }
+
     public void setNumpadListener(NumpadListener listener) {
         numpadListener = listener;
     }
 
     @Override
     public void onClick(View view) {
-        if (targetEditText == null) {
+        if (targetEditText == null && additionalEditText == null) {
             return;
         }
 
@@ -107,24 +129,57 @@ public class Numpad extends GridLayout implements View.OnClickListener {
         Log.d("Numpad", "Haptic feedback triggered");
 
         if (view.getId() == R.id.button_backspace) {
-            String currentText = targetEditText.getText().toString();
-            if (!TextUtils.isEmpty(currentText)) {
-                String updatedText = currentText.substring(0, currentText.length() - 1);
-                targetEditText.setText(updatedText);
+            if (targetEditText != null) {
+                String currentText = targetEditText.getText().toString();
+                if (!TextUtils.isEmpty(currentText)) {
+                    String updatedText = currentText.substring(0, currentText.length() - 1);
+                    targetEditText.setText(updatedText);
+                }
+            } else if (additionalEditText != null) {
+                String currentText = additionalEditText.getText().toString();
+                if (!TextUtils.isEmpty(currentText)) {
+                    String updatedText = currentText.substring(0, currentText.length() - 1);
+                    additionalEditText.setText(updatedText);
+                }
             }
         } else if (view.getId() == R.id.button_submit) {
-            String enteredValue = targetEditText.getText().toString();
+            String enteredValue;
+            if (targetEditText != null) {
+                enteredValue = targetEditText.getText().toString();
+                targetEditText.clearFocus();
+                inputMethodManager.hideSoftInputFromWindow(targetEditText.getWindowToken(), 0);
+            } else if (additionalEditText != null) {
+                enteredValue = additionalEditText.getText().toString();
+                additionalEditText.clearFocus();
+                inputMethodManager.hideSoftInputFromWindow(additionalEditText.getWindowToken(), 0);
+            } else {
+                return;
+            }
+
             if (numpadListener != null) {
                 numpadListener.onNumpadSubmit(enteredValue);
             }
-            targetEditText.clearFocus();
-            inputMethodManager.hideSoftInputFromWindow(targetEditText.getWindowToken(), 0);
         } else {
             Button button = (Button) view;
-            String currentText = targetEditText.getText().toString();
+            String currentText;
+            if (targetEditText != null) {
+                currentText = targetEditText.getText().toString();
+                targetEditText.requestFocus();
+            } else if (additionalEditText != null) {
+                currentText = additionalEditText.getText().toString();
+                additionalEditText.requestFocus();
+            } else {
+                return;
+            }
+
             String pressedKey = button.getText().toString();
             String updatedText = currentText + pressedKey;
-            targetEditText.setText(updatedText);
+
+            if (targetEditText != null) {
+                targetEditText.setText(updatedText);
+            } else if (additionalEditText != null) {
+                additionalEditText.setText(updatedText);
+            }
         }
     }
 
