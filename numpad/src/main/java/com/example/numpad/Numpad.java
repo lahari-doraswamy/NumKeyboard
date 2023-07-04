@@ -25,7 +25,7 @@ import java.util.List;
 public class Numpad extends GridLayout implements View.OnClickListener {
 
     private List<EditText> targetEditTexts;
-    private EditText activeEditText; // Track the currently active EditText
+    private EditText activeEditText;
     private NumpadListener numpadListener;
     private InputMethodManager inputMethodManager;
     private GestureDetector gestureDetector;
@@ -83,7 +83,7 @@ public class Numpad extends GridLayout implements View.OnClickListener {
             if (event.getAction() == MotionEvent.ACTION_UP) {
                 setVisibility(View.VISIBLE);
                 Log.d("Numpad", "Numpad setTargetEditText - MotionEvent.ACTION_UP");
-                setActiveEditText(editText); // Set the active EditText
+                setActiveEditText(editText);
                 return true;
             }
             return false;
@@ -93,7 +93,7 @@ public class Numpad extends GridLayout implements View.OnClickListener {
         rootView.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 setVisibility(View.GONE);
-                setActiveEditText(null); // Clear the active EditText
+                setActiveEditText(null);
             }
             return false;
         });
@@ -159,7 +159,7 @@ public class Numpad extends GridLayout implements View.OnClickListener {
                 setVisibility(View.GONE);
                 if (activeEditText != null) {
                     inputMethodManager.hideSoftInputFromWindow(activeEditText.getWindowToken(), 0);
-                    setActiveEditText(null); // Clear the active EditText
+                    setActiveEditText(null);
                 }
                 Log.d("Numpad", "Numpad closed");
             }
