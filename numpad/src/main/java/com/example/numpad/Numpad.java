@@ -19,10 +19,13 @@ import android.widget.GridLayout;
 
 import com.example.numpad.NumpadListener;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Numpad extends GridLayout implements View.OnClickListener {
 
-    private EditText targetEditText;
-    private EditText additionalEditText;
+    private List<EditText> targetEditTexts;
+    private EditText activeEditText; // Track the currently active EditText
     private NumpadListener numpadListener;
     private InputMethodManager inputMethodManager;
     private GestureDetector gestureDetector;
@@ -70,13 +73,17 @@ public class Numpad extends GridLayout implements View.OnClickListener {
         }
     }
 
-    public void setTargetEditText(EditText editText) {
-        targetEditText = editText;
-        targetEditText.setInputType(InputType.TYPE_NULL);
+    public void addTargetEditText(EditText editText) {
+        if (targetEditTexts == null) {
+            targetEditTexts = new ArrayList<>();
+        }
+        targetEditTexts.add(editText);
+        editText.setInputType(InputType.TYPE_NULL);
         editText.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_UP) {
                 setVisibility(View.VISIBLE);
                 Log.d("Numpad", "Numpad setTargetEditText - MotionEvent.ACTION_UP");
+                setActiveEditText(editText); // Set the active EditText
                 return true;
             }
             return false;
@@ -86,30 +93,14 @@ public class Numpad extends GridLayout implements View.OnClickListener {
         rootView.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 setVisibility(View.GONE);
+                setActiveEditText(null); // Clear the active EditText
             }
             return false;
         });
     }
 
-    public void setAdditionalEditText(EditText editText1) {
-        additionalEditText = editText1;
-        additionalEditText.setInputType(InputType.TYPE_NULL);
-        editText1.setOnTouchListener((v, event) -> {
-            if (event.getAction() == MotionEvent.ACTION_UP) {
-                setVisibility(View.VISIBLE);
-                Log.d("Numpad", "Numpad setAdditionalEditText - MotionEvent.ACTION_UP");
-                return true;
-            }
-            return false;
-        });
-
-        View rootView = editText1.getRootView();
-        rootView.setOnTouchListener((v, event) -> {
-            if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                setVisibility(View.GONE);
-            }
-            return false;
-        });
+    private void setActiveEditText(EditText editText) {
+        activeEditText = editText;
     }
 
     public void setNumpadListener(NumpadListener listener) {
@@ -118,7 +109,7 @@ public class Numpad extends GridLayout implements View.OnClickListener {
 
     @Override
     public void onClick(View view) {
-        if (targetEditText == null && additionalEditText == null) {
+        if (activeEditText == null) {
             return;
         }
 
@@ -129,57 +120,25 @@ public class Numpad extends GridLayout implements View.OnClickListener {
         Log.d("Numpad", "Haptic feedback triggered");
 
         if (view.getId() == R.id.button_backspace) {
-            if (targetEditText != null) {
-                String currentText = targetEditText.getText().toString();
-                if (!TextUtils.isEmpty(currentText)) {
-                    String updatedText = currentText.substring(0, currentText.length() - 1);
-                    targetEditText.setText(updatedText);
-                }
-            } else if (additionalEditText != null) {
-                String currentText = additionalEditText.getText().toString();
-                if (!TextUtils.isEmpty(currentText)) {
-                    String updatedText = currentText.substring(0, currentText.length() - 1);
-                    additionalEditText.setText(updatedText);
-                }
+            String currentText = activeEditText.getText().toString();
+            if (!TextUtils.isEmpty(currentText)) {
+                String updatedText = currentText.substring(0, currentText.length() - 1);
+                activeEditText.setText(updatedText);
             }
         } else if (view.getId() == R.id.button_submit) {
-            String enteredValue;
-            if (targetEditText != null) {
-                enteredValue = targetEditText.getText().toString();
-                targetEditText.clearFocus();
-                inputMethodManager.hideSoftInputFromWindow(targetEditText.getWindowToken(), 0);
-            } else if (additionalEditText != null) {
-                enteredValue = additionalEditText.getText().toString();
-                additionalEditText.clearFocus();
-                inputMethodManager.hideSoftInputFromWindow(additionalEditText.getWindowToken(), 0);
-            } else {
-                return;
-            }
-
+            String enteredValue = activeEditText.getText().toString();
             if (numpadListener != null) {
                 numpadListener.onNumpadSubmit(enteredValue);
             }
+            activeEditText.clearFocus();
+            inputMethodManager.hideSoftInputFromWindow(activeEditText.getWindowToken(), 0);
+            setActiveEditText(null); // Clear the active EditText
         } else {
             Button button = (Button) view;
-            String currentText;
-            if (targetEditText != null) {
-                currentText = targetEditText.getText().toString();
-                targetEditText.requestFocus();
-            } else if (additionalEditText != null) {
-                currentText = additionalEditText.getText().toString();
-                additionalEditText.requestFocus();
-            } else {
-                return;
-            }
-
+            String currentText = activeEditText.getText().toString();
             String pressedKey = button.getText().toString();
             String updatedText = currentText + pressedKey;
-
-            if (targetEditText != null) {
-                targetEditText.setText(updatedText);
-            } else if (additionalEditText != null) {
-                additionalEditText.setText(updatedText);
-            }
+            activeEditText.setText(updatedText);
         }
     }
 
@@ -198,7 +157,10 @@ public class Numpad extends GridLayout implements View.OnClickListener {
 
             if (!numPadRect.contains(touchX, touchY)) {
                 setVisibility(View.GONE);
-                inputMethodManager.hideSoftInputFromWindow(targetEditText.getWindowToken(), 0);
+                if (activeEditText != null) {
+                    inputMethodManager.hideSoftInputFromWindow(activeEditText.getWindowToken(), 0);
+                    setActiveEditText(null); // Clear the active EditText
+                }
                 Log.d("Numpad", "Numpad closed");
             }
 

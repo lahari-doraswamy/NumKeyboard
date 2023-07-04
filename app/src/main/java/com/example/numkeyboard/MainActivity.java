@@ -23,8 +23,8 @@ public class MainActivity extends AppCompatActivity {
         EditText editText = findViewById(R.id.editText);
         EditText editText1=findViewById(R.id.editText1);
         Numpad numpad = findViewById(R.id.numberKeyboardView);
-        numpad.setTargetEditText(editText);
-        numpad.setTargetEditText(editText1);
+        numpad.addTargetEditText(editText);
+        numpad.addTargetEditText(editText1);
         numpad.setButtonColor(Color.BLACK,Color.WHITE);
 
         numpad.setNumpadListener(value -> Toast.makeText(MainActivity.this, value, Toast.LENGTH_SHORT).show());
