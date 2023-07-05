@@ -8,6 +8,7 @@ import android.text.Editable;
 import android.text.InputType;
 import android.text.Layout;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.GestureDetector;
@@ -124,23 +125,48 @@ public class Numpad extends GridLayout implements View.OnClickListener {
 
     private void setActiveEditText(EditText editText) {
         activeEditText = editText;
+        editText.requestFocus();
+
         if (editText.getText() != null) {
             String text = editText.getText().toString();
             if (!TextUtils.isEmpty(text)) {
                 int selection = editText.getSelectionStart();
-                editText.requestFocus();
                 editText.setSelection(selection);
+                showCursor();
+            } else {
+                editText.setSelection(0); // Set the cursor at the beginning of the text
+                editText.setPadding(30, editText.getPaddingTop(), editText.getPaddingRight(), editText.getPaddingBottom()); // Add left padding
                 showCursor();
             }
         }
+
+        editText.setCursorVisible(true); // Show the cursor
+
+        // Register a TextWatcher to detect text changes
+        editText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                // Ensure the cursor stays at the end of the text
+                editText.setSelection(s.length());
+            }
+        });
     }
+
 
     private void setupCursorView(Context context) {
         cursorView = new View(context);
         int cursorColor = getResources().getColor(R.color.black);
         cursorView.setBackgroundColor(cursorColor);
-        int cursorWidth = 5; // Change the width here
-        int cursorHeight = 70; // Change the height here
+        int cursorWidth = 1; // Change the width here
+        int cursorHeight = 40; // Change the height here
         cursorView.setLayoutParams(new FrameLayout.LayoutParams(cursorWidth, cursorHeight));
     }
 
@@ -151,6 +177,9 @@ public class Numpad extends GridLayout implements View.OnClickListener {
             rootView.addView(cursorView);
             updateCursorPosition();
             cursorHandler.postDelayed(cursorRunnable, 500);
+            cursorView.setVisibility(View.VISIBLE); // Make the cursor view visible
+            cursorView.removeCallbacks(cursorBlinkRunnable); // Remove any existing callbacks
+            cursorView.postDelayed(cursorBlinkRunnable, 500); // Start the cursor blinking
         }
     }
 
@@ -160,8 +189,11 @@ public class Numpad extends GridLayout implements View.OnClickListener {
             FrameLayout rootView = activeEditText.getRootView().findViewById(android.R.id.content);
             rootView.removeView(cursorView);
             cursorHandler.removeCallbacks(cursorRunnable);
+            cursorView.setVisibility(View.GONE); // Hide the cursor view
+            cursorView.removeCallbacks(cursorBlinkRunnable); // Remove the cursor blinking callback
         }
     }
+
 
     private void updateCursorPosition() {
         if (activeEditText != null && cursorVisible) {
@@ -176,20 +208,50 @@ public class Numpad extends GridLayout implements View.OnClickListener {
                 int ascent = layout.getLineAscent(line);
                 int descent = layout.getLineDescent(line);
 
-                int cursorX = (int) (layout.getPrimaryHorizontal(selectionStart) + activeEditText.getX());
-                int cursorY = activeEditText.getTop() + baseline + descent;
+                int paddingTop = activeEditText.getPaddingTop();
+                int paddingBottom = activeEditText.getPaddingBottom();
+                int textHeight = descent - ascent;
+                int cursorHeight = textHeight; // Set the cursor height equal to the text height
+                int cursorWidth = 3; // Adjust the width as desired
+
+                int cursorX;
+                int cursorY = activeEditText.getTop() + baseline + (textHeight / 2) - paddingTop;
+
+                if (selectionStart > 0) {
+                    cursorX = (int) (layout.getPrimaryHorizontal(selectionStart - 1) + activeEditText.getX() - activeEditText.getPaddingLeft());
+                } else {
+                    cursorX = (int) (layout.getPrimaryHorizontal(selectionStart) + activeEditText.getX() - activeEditText.getPaddingLeft());
+                }
 
                 cursorView.setX(cursorX);
                 cursorView.setY(cursorY);
+                cursorView.setLayoutParams(new FrameLayout.LayoutParams(cursorWidth, cursorHeight));
             }
         }
     }
+
+
+
+
+
+
+
 
     private Runnable cursorRunnable = new Runnable() {
         @Override
         public void run() {
             updateCursorPosition();
             cursorHandler.postDelayed(this, 500);
+        }
+    };
+    private Runnable cursorBlinkRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (cursorVisible) {
+                int visibility = cursorView.getVisibility();
+                cursorView.setVisibility(visibility == View.VISIBLE ? View.INVISIBLE : View.VISIBLE);
+                cursorView.postDelayed(this, 500); // Toggle visibility every 500ms
+            }
         }
     };
 
