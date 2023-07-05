@@ -3,4 +3,5 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="grey">#FFC8C8C8</color>
+    <color name="cursorcolor">#FF0000</color>
 </resources>

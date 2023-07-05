@@ -3,7 +3,10 @@ package com.example.numpad;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Rect;
+import android.os.Handler;
+import android.text.Editable;
 import android.text.InputType;
+import android.text.Layout;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -15,20 +18,22 @@ import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.GridLayout;
 
 import com.example.numpad.NumpadListener;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class Numpad extends GridLayout implements View.OnClickListener {
 
-    private List<EditText> targetEditTexts;
-    private EditText activeEditText;
+    private EditText targetEditText;
     private NumpadListener numpadListener;
     private InputMethodManager inputMethodManager;
-    private GestureDetector gestureDetector;
+    private EditText activeEditText;
+    private View cursorView;
+    private boolean cursorVisible = false;
+    private Handler cursorHandler = new Handler();
+    private Handler backspaceHandler = new Handler();
+    private boolean backspaceLongPressed = false;
 
     public Numpad(Context context) {
         super(context);
@@ -47,8 +52,8 @@ public class Numpad extends GridLayout implements View.OnClickListener {
 
     private void init(Context context) {
         inputMethodManager = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
-        gestureDetector = new GestureDetector(context, new NumpadGestureListener());
         setupButtonListeners();
+        setupCursorView(context);
     }
 
     private void setupButtonListeners() {
@@ -58,6 +63,27 @@ public class Numpad extends GridLayout implements View.OnClickListener {
         for (int buttonId : getButtonIds()) {
             Button key = findViewById(buttonId);
             key.setOnClickListener(this);
+            key.setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) {
+                    if (v.getId() == R.id.button_backspace) {
+                        backspaceLongPressed = true;
+                        backspaceHandler.postDelayed(backspaceRunnable, 300);
+                        return true;
+                    }
+                    return false;
+                }
+            });
+            key.setOnTouchListener(new View.OnTouchListener() {
+                @Override
+                public boolean onTouch(View v, MotionEvent event) {
+                    if (v.getId() == R.id.button_backspace && event.getAction() == MotionEvent.ACTION_UP) {
+                        backspaceLongPressed = false;
+                        backspaceHandler.removeCallbacks(backspaceRunnable);
+                    }
+                    return false;
+                }
+            });
         }
     }
 
@@ -73,17 +99,14 @@ public class Numpad extends GridLayout implements View.OnClickListener {
         }
     }
 
-    public void addTargetEditText(EditText editText) {
-        if (targetEditTexts == null) {
-            targetEditTexts = new ArrayList<>();
-        }
-        targetEditTexts.add(editText);
-        editText.setInputType(InputType.TYPE_NULL);
+    public void setTargetEditText(EditText editText) {
+        targetEditText = editText;
+        targetEditText.setInputType(InputType.TYPE_NULL);
         editText.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_UP) {
                 setVisibility(View.VISIBLE);
-                Log.d("Numpad", "Numpad setTargetEditText - MotionEvent.ACTION_UP");
                 setActiveEditText(editText);
+                Log.d("Numpad", "Numpad setTargetEditText - MotionEvent.ACTION_UP");
                 return true;
             }
             return false;
@@ -93,7 +116,7 @@ public class Numpad extends GridLayout implements View.OnClickListener {
         rootView.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 setVisibility(View.GONE);
-                setActiveEditText(null);
+                hideCursor();
             }
             return false;
         });
@@ -101,7 +124,96 @@ public class Numpad extends GridLayout implements View.OnClickListener {
 
     private void setActiveEditText(EditText editText) {
         activeEditText = editText;
+        if (editText.getText() != null) {
+            String text = editText.getText().toString();
+            if (!TextUtils.isEmpty(text)) {
+                int selection = editText.getSelectionStart();
+                editText.requestFocus();
+                editText.setSelection(selection);
+                showCursor();
+            }
+        }
     }
+
+    private void setupCursorView(Context context) {
+        cursorView = new View(context);
+        int cursorColor = getResources().getColor(R.color.black);
+        cursorView.setBackgroundColor(cursorColor);
+        int cursorWidth = 5; // Change the width here
+        int cursorHeight = 70; // Change the height here
+        cursorView.setLayoutParams(new FrameLayout.LayoutParams(cursorWidth, cursorHeight));
+    }
+
+    private void showCursor() {
+        if (activeEditText != null && !cursorVisible) {
+            cursorVisible = true;
+            FrameLayout rootView = activeEditText.getRootView().findViewById(android.R.id.content);
+            rootView.addView(cursorView);
+            updateCursorPosition();
+            cursorHandler.postDelayed(cursorRunnable, 500);
+        }
+    }
+
+    private void hideCursor() {
+        if (cursorVisible) {
+            cursorVisible = false;
+            FrameLayout rootView = activeEditText.getRootView().findViewById(android.R.id.content);
+            rootView.removeView(cursorView);
+            cursorHandler.removeCallbacks(cursorRunnable);
+        }
+    }
+
+    private void updateCursorPosition() {
+        if (activeEditText != null && cursorVisible) {
+            int selectionStart = activeEditText.getSelectionStart();
+            int selectionEnd = activeEditText.getSelectionEnd();
+
+            Layout layout = activeEditText.getLayout();
+            if (layout != null) {
+                int line = layout.getLineForOffset(selectionStart);
+
+                int baseline = layout.getLineBaseline(line);
+                int ascent = layout.getLineAscent(line);
+                int descent = layout.getLineDescent(line);
+
+                int cursorX = (int) (layout.getPrimaryHorizontal(selectionStart) + activeEditText.getX());
+                int cursorY = activeEditText.getTop() + baseline + descent;
+
+                cursorView.setX(cursorX);
+                cursorView.setY(cursorY);
+            }
+        }
+    }
+
+    private Runnable cursorRunnable = new Runnable() {
+        @Override
+        public void run() {
+            updateCursorPosition();
+            cursorHandler.postDelayed(this, 500);
+        }
+    };
+
+    private Runnable backspaceRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (activeEditText != null && backspaceLongPressed) {
+                Editable editable = activeEditText.getText();
+                int selectionStart = activeEditText.getSelectionStart();
+                int selectionEnd = activeEditText.getSelectionEnd();
+
+                if (selectionStart > 0) {
+                    if (selectionStart == selectionEnd) {
+                        editable.delete(selectionStart - 1, selectionStart);
+                        activeEditText.setSelection(selectionStart - 1);
+                    } else {
+                        editable.delete(selectionStart, selectionEnd);
+                        activeEditText.setSelection(selectionStart);
+                    }
+                    backspaceHandler.postDelayed(this, 100);
+                }
+            }
+        }
+    };
 
     public void setNumpadListener(NumpadListener listener) {
         numpadListener = listener;
@@ -119,11 +231,19 @@ public class Numpad extends GridLayout implements View.OnClickListener {
         );
         Log.d("Numpad", "Haptic feedback triggered");
 
+        Editable editable = activeEditText.getText();
+        int selectionStart = activeEditText.getSelectionStart();
+        int selectionEnd = activeEditText.getSelectionEnd();
+
         if (view.getId() == R.id.button_backspace) {
-            String currentText = activeEditText.getText().toString();
-            if (!TextUtils.isEmpty(currentText)) {
-                String updatedText = currentText.substring(0, currentText.length() - 1);
-                activeEditText.setText(updatedText);
+            if (selectionStart > 0) {
+                if (selectionStart == selectionEnd) {
+                    editable.delete(selectionStart - 1, selectionStart);
+                    activeEditText.setSelection(selectionStart - 1);
+                } else {
+                    editable.delete(selectionStart, selectionEnd);
+                    activeEditText.setSelection(selectionStart);
+                }
             }
         } else if (view.getId() == R.id.button_submit) {
             String enteredValue = activeEditText.getText().toString();
@@ -132,39 +252,18 @@ public class Numpad extends GridLayout implements View.OnClickListener {
             }
             activeEditText.clearFocus();
             inputMethodManager.hideSoftInputFromWindow(activeEditText.getWindowToken(), 0);
-            setActiveEditText(null); // Clear the active EditText
+            hideCursor();
         } else {
             Button button = (Button) view;
-            String currentText = activeEditText.getText().toString();
             String pressedKey = button.getText().toString();
-            String updatedText = currentText + pressedKey;
-            activeEditText.setText(updatedText);
-        }
-    }
 
-    private class NumpadGestureListener extends GestureDetector.SimpleOnGestureListener {
-        @Override
-        public boolean onDown(MotionEvent e) {
-            return true;
-        }
-
-        @Override
-        public boolean onSingleTapUp(MotionEvent e) {
-            int touchX = (int) e.getRawX();
-            int touchY = (int) e.getRawY();
-            Rect numPadRect = new Rect();
-            getGlobalVisibleRect(numPadRect);
-
-            if (!numPadRect.contains(touchX, touchY)) {
-                setVisibility(View.GONE);
-                if (activeEditText != null) {
-                    inputMethodManager.hideSoftInputFromWindow(activeEditText.getWindowToken(), 0);
-                    setActiveEditText(null);
-                }
-                Log.d("Numpad", "Numpad closed");
+            if (selectionStart == selectionEnd) {
+                ((Editable) editable).insert(selectionStart, pressedKey);
+                activeEditText.setSelection(selectionStart + 1);
+            } else {
+                editable.replace(selectionStart, selectionEnd, pressedKey);
+                activeEditText.setSelection(selectionStart + pressedKey.length());
             }
-
-            return true;
         }
     }
 }
