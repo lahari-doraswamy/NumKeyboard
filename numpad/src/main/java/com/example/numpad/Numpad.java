@@ -1,6 +1,10 @@
 package com.example.numpad;
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.graphics.drawable.AdaptiveIconDrawable;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.media.AudioMetadata;
 import android.os.Handler;
 import android.text.Editable;
 import android.text.InputType;
@@ -16,6 +20,10 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.GridLayout;
+
+import androidx.core.content.ContextCompat;
+
+import java.security.Key;
 
 //Custom numpad view that can be attached to an EditText.
 public class Numpad extends GridLayout implements View.OnClickListener {
@@ -100,11 +108,12 @@ public class Numpad extends GridLayout implements View.OnClickListener {
             Button key = findViewById(buttonId);
             key.setTextColor(textColor);
             key.setBackgroundTintList(ColorStateList.valueOf(backgroundColor));
+
         }
     }
 
-     //Set the target EditText for the numpad.
 
+    //Set the target EditText for the numpad.
     public void setTargetEditText(EditText editText) {
         targetEditText = editText;
         targetEditText.setInputType(InputType.TYPE_NULL);
@@ -117,7 +126,6 @@ public class Numpad extends GridLayout implements View.OnClickListener {
             }
             return false;
         });
-
         View rootView = editText.getRootView();
         rootView.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
@@ -128,7 +136,6 @@ public class Numpad extends GridLayout implements View.OnClickListener {
     }
 
      //Set the active EditText.
-
     private void setActiveEditText(EditText editText) {
         activeEditText = editText;
         editText.requestFocus();
@@ -148,10 +155,6 @@ public class Numpad extends GridLayout implements View.OnClickListener {
         }
 
     }
-
-
-
-
     private Runnable backspaceRunnable = new Runnable() {
         @Override
         public void run() {
