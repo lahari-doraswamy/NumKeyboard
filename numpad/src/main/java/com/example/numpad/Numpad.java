@@ -108,6 +108,8 @@ public class Numpad extends GridLayout implements View.OnClickListener {
             Button key = findViewById(buttonId);
             key.setTextColor(textColor);
             key.setBackgroundTintList(ColorStateList.valueOf(backgroundColor));
+            key.setBackgroundResource(R.drawable.button_border);
+
 
         }
     }
